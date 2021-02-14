@@ -3,11 +3,12 @@ local ADDON_NAME = "AgsInvididualItemPriceFilter"
 
 AgsInvididualItemPriceFilter = {
     internal = {
-        chat = LibChatMessage(ADDON_NAME, "InFi"),
+        chat = LibChatMessage("AgsInFi", "InFi"),
         FILTER_ID = {
             INDIVIDUAL_ITEM_PRICE_FILTER = 105
-        } -- later the value from AwesomeGuildStore/data/FilterIds.lua should be used
+        }, -- later the value from AwesomeGuildStore/data/FilterIds.lua should be used
         --gettext = LibGetText(ADDON_NAME).gettext
+        itemIdNameMap = {}
     },
 }
 local chat = AgsInvididualItemPriceFilter.internal.chat
@@ -25,14 +26,17 @@ function AgsInvididualItemPriceFilter.Initialize()
         AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName] = {}
     end
 
+    if AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"] == nil then
+        AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"] = {}
+    end
+    
     if AwesomeGuildStore.GetAPIVersion == nil then return end
     if AwesomeGuildStore.GetAPIVersion() ~= 4 then return end
   
     local FILTER_ID = AwesomeGuildStore:GetFilterIds()
-  
     local InvididualItemPriceFilter = AgsInvididualItemPriceFilter.InitInvididualItemPriceFilterClass()
     local InvididualItemPriceFilterFragment = AgsInvididualItemPriceFilter.InitInvididualItemPriceFilterFragmentClass()
-  
+
     AwesomeGuildStore:RegisterCallback(AwesomeGuildStore.callback.AFTER_FILTER_SETUP,
       function(...)
         AwesomeGuildStore:RegisterFilter(InvididualItemPriceFilter:New())
@@ -43,8 +47,21 @@ function AgsInvididualItemPriceFilter.Initialize()
 
     SLASH_COMMANDS["/agsinfi"] = function(args)
         if args == nil or args == "" then
-            local text = "format: {itemId} {itemMaxPrice}"
-            AgsInvididualItemPriceFilter.internal.chat:Print(text)
+            AgsInvididualItemPriceFilter.internal.chat:Print("help: format: {itemId} {itemMaxPrice}")
+            AgsInvididualItemPriceFilter.internal.chat:Print("List of Max Prices:")
+            for itemId, value in pairs(AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]) do
+                if not (type(value) == "table") then
+                    local text = "ItemId: " .. itemId .. " MaxPrice: " .. value .. " Name: "
+                    if not (AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"][itemId] == nil) then
+                        text = AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"][itemId] .. 
+                            " = " .. value .. " (ItemId=" .. itemId .. ")"
+                    else
+                        text = "not found name = " .. value .. " (ItemId=" .. itemId .. ")"
+                        text = text .. " Set item price with the context menu to fetch the name!"
+                    end
+                    AgsInvididualItemPriceFilter.internal.chat:Print(text)
+                end
+            end
         else
             local argtable={}
             
@@ -67,10 +84,14 @@ function AgsInvididualItemPriceFilter.Initialize()
             end
 
             AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName][itemId] = itemMaxPrice
-        
+            
+            if (not (AgsInvididualItemPriceFilter.internal.itemIdNameMap[itemId] == nil)) then
+                AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"][itemId] = 
+                    AgsInvididualItemPriceFilter.internal.itemIdNameMap[itemId]
+            end
+            
             local resultText = "Now the maxprice is set to " .. itemMaxPrice .. "  for item with Id " .. itemId
             AgsInvididualItemPriceFilter.internal.chat:Print(resultText)
-        
         end
 	end
 
@@ -112,18 +133,19 @@ function AgsInvididualItemPriceFilter.zo_callLater(itemLink)
     end
 
     AddMenuItem("AGS indiv. item price (" .. maxPrice .. ")", function()
-        AgsInvididualItemPriceFilter.IndividualItemPriceConfigToChat(itemId)
+        AgsInvididualItemPriceFilter.IndividualItemPriceConfigToChat(itemId, itemLink)
     end, MENU_ADD_OPTION_LABEL)
 
     ShowMenu(self)
 end
 
-function AgsInvididualItemPriceFilter.IndividualItemPriceConfigToChat(itemId)
+function AgsInvididualItemPriceFilter.IndividualItemPriceConfigToChat(itemId, itemLink)
     local ChatEditControl = CHAT_SYSTEM.textEntry.editControl
     if (not ChatEditControl:HasFocus()) then 
         StartChatInput() 
     end
 
+    AgsInvididualItemPriceFilter.internal.itemIdNameMap[itemId] = GetItemLinkName(itemLink)
     local maxPrice = tonumber(AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName][itemId])
     if (maxPrice == nil or maxPrice <= 0) then
         ChatEditControl:InsertText("/agsinfi " .. itemId .. " 0")

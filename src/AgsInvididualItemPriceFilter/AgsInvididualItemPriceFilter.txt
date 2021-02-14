@@ -1,6 +1,6 @@
 ## Title: AgsInvididualItemPriceFilter
 ## Author: be.ste
-## Version: 1.0.0
+## Version: 1.0.1
 ## APIVersion: 100033
 ## AddOnVersion: 1
 ## DependsOn: AwesomeGuildStore>=2635
