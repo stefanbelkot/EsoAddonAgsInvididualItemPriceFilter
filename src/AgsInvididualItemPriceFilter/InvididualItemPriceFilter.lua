@@ -49,15 +49,24 @@ function AgsInvididualItemPriceFilter.InitInvididualItemPriceFilterClass()
             local itemLink = GetTradingHouseSearchResultItemLink(index)
 			local itemId = GetItemLinkItemId(itemLink)
 			local maxPrice = tonumber(AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName][itemId])
+			local minCount = tonumber(AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"][itemId])
 			
-			if (maxPrice == nil or maxPrice <= 0) then
+			if ((maxPrice == nil or maxPrice <= 0) and (minCount == nil or minCount <= 0)) then
 				return true
 			end
 			
-			local unitPrice = result.purchasePrice / result.stackCount
 			local deal = true
-			if unitPrice > maxPrice then -- dreugh wax
-				deal = false
+			if (maxPrice) then
+				local unitPrice = result.purchasePrice / result.stackCount
+			   	if unitPrice > maxPrice then -- dreugh wax
+				   deal = false
+			   	end
+			end
+			
+			if (minCount) then
+			   	if minCount > result.stackCount then -- dreugh wax
+				   deal = false
+			   	end
 			end
 
             return deal

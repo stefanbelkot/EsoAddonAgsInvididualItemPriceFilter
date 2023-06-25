@@ -29,6 +29,10 @@ function AgsInvididualItemPriceFilter.Initialize()
     if AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"] == nil then
         AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"] = {}
     end
+
+    if AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"] == nil then
+        AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"] = {}
+    end
     
     if AwesomeGuildStore.GetAPIVersion == nil then return end
     if AwesomeGuildStore.GetAPIVersion() ~= 4 then return end
@@ -95,6 +99,56 @@ function AgsInvididualItemPriceFilter.Initialize()
         end
 	end
 
+    SLASH_COMMANDS["/agsinfim"] = function(args)
+        if args == nil or args == "" then
+            AgsInvididualItemPriceFilter.internal.chat:Print("help: format: {itemId} {itemMinCount}")
+            AgsInvididualItemPriceFilter.internal.chat:Print("List of Min Counts:")
+            for itemId, value in pairs(AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"]) do
+                if not (type(value) == "table") then
+                    local text = "ItemId: " .. itemId .. " MinCount: " .. value .. " Name: "
+                    if not (AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"][itemId] == nil) then
+                        text = AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"][itemId] .. 
+                            " = " .. value .. " (ItemId=" .. itemId .. ")"
+                    else
+                        text = "not found name = " .. value .. " (ItemId=" .. itemId .. ")"
+                        text = text .. " Set item price with the context menu to fetch the name!"
+                    end
+                    AgsInvididualItemPriceFilter.internal.chat:Print(text)
+                end
+            end
+        else
+            local argtable={}
+            
+            for match in args:gmatch("%S+") do
+                 table.insert(argtable, match);
+            end
+
+            local itemId = tonumber(argtable[1])
+            if itemId == nil then
+                local text = "format wrong: {itemId} {itemMinCount} - itemId must be a number!"
+                AgsInvididualItemPriceFilter.internal.chat:Print(text)
+                return
+            end
+
+            local itemMinCount = tonumber(argtable[2])
+            if itemMinCount == nil then
+                local text = "format wrong: {itemId} {itemMinCount} - itemMinCount must be a number!"
+                AgsInvididualItemPriceFilter.internal.chat:Print(text)
+                return
+            end
+
+            AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"][itemId] = itemMinCount
+            
+            if (not (AgsInvididualItemPriceFilter.internal.itemIdNameMap[itemId] == nil)) then
+                AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["itemIdNameMap"][itemId] = 
+                    AgsInvididualItemPriceFilter.internal.itemIdNameMap[itemId]
+            end
+            
+            local resultText = "Now the minCount is set to " .. itemMinCount .. "  for item with Id " .. itemId
+            AgsInvididualItemPriceFilter.internal.chat:Print(resultText)
+        end
+	end
+
     ZO_PreHook('ZO_InventorySlot_ShowContextMenu', function(_inventorySlot)
         AgsInvididualItemPriceFilter.ZO_InventorySlot_ShowContextMenu(_inventorySlot)
     end)
@@ -136,6 +190,14 @@ function AgsInvididualItemPriceFilter.zo_callLater(itemLink)
         AgsInvididualItemPriceFilter.IndividualItemPriceConfigToChat(itemId, itemLink)
     end, MENU_ADD_OPTION_LABEL)
 
+    local minCount = 0
+    if (not (tonumber(AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"][itemId])  == nil)) then
+        minCount = AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"][itemId]
+    end
+    AddMenuItem("AGS indiv. item minCount (" .. minCount .. ")", function()
+        AgsInvididualItemPriceFilter.IndividualMinCountConfigToChat(itemId, itemLink)
+    end, MENU_ADD_OPTION_LABEL)
+
     ShowMenu(self)
 end
 
@@ -151,6 +213,21 @@ function AgsInvididualItemPriceFilter.IndividualItemPriceConfigToChat(itemId, it
         ChatEditControl:InsertText("/agsinfi " .. itemId .. " 0")
     else
         ChatEditControl:InsertText("/agsinfi " .. itemId .. " " .. maxPrice)
+    end
+end
+
+function AgsInvididualItemPriceFilter.IndividualMinCountConfigToChat(itemId, itemLink)
+    local ChatEditControl = CHAT_SYSTEM.textEntry.editControl
+    if (not ChatEditControl:HasFocus()) then 
+        StartChatInput() 
+    end
+
+    AgsInvididualItemPriceFilter.internal.itemIdNameMap[itemId] = GetItemLinkName(itemLink)
+    local minCount = tonumber(AgsInvididualItemPriceFilter.savedVariables[AgsInvididualItemPriceFilter.loggedInWorldName]["mincount"][itemId])
+    if (minCount == nil or minCount <= 0) then
+        ChatEditControl:InsertText("/agsinfim " .. itemId .. " 0")
+    else
+        ChatEditControl:InsertText("/agsinfim " .. itemId .. " " .. minCount)
     end
 end
 
